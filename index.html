@@ -105,78 +105,6 @@
       <a-entity cursor="rayOrigin: mouse; fuse: false"
                 raycaster="objects: .ui-btn; far: 25; interval: 80"
                 visible="false"></a-entity>
-
-      <!-- Head-locked control panel. It is parented to the camera so it always sits a fixed amount
-           below and in front of the user's gaze, no matter their eye height or where the training
-           "world" was placed. Position (0, -0.6, -1.4) puts the panel ~23° below straight ahead.
-           Rotation 23° around X tilts the panel face up toward the eyes. -->
-      <a-entity id="vr-panel" position="0 -0.6 -1.4" rotation="23 0 0" scale="0.55 0.55 0.55">
-        <a-plane width="1.78" height="1.10" color="#1a1a26"
-                 material="shader: flat; transparent: false; side: double"></a-plane>
-
-        <!-- Header (matches "routineName . Speed . Range . Session") -->
-        <a-text id="vrRoutineLabel" value="Circle"
-                align="center" position="0 0.40 0.001" color="#e8e8ee" width="2.6" side="double"></a-text>
-        <a-text id="vrInfoLabel" value="Speed 2.0   .   Range 100%   .   0:00"
-                align="center" position="0 0.31 0.001" color="#9aa0aa" width="1.9" side="double"></a-text>
-
-        <!-- Speed row -->
-        <a-text value="Speed"   align="left"  position="-0.85 0.18 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="speed-" width="0.13" height="0.10" position="-0.32 0.18 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="-" align="center" position="-0.32 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
-        <a-text  id="vrSpeedVal" value="2.0" align="center" position="-0.07 0.18 0.001" color="#fff" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="speed+" width="0.13" height="0.10" position=" 0.18 0.18 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="+" align="center" position=" 0.18 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
-
-        <!-- Size row -->
-        <a-text value="Size"    align="left"  position="-0.85 0.06 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="size-" width="0.13" height="0.10" position="-0.32 0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="-" align="center" position="-0.32 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
-        <a-text  id="vrSizeVal" value="32" align="center" position="-0.07 0.06 0.001" color="#fff" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="size+" width="0.13" height="0.10" position=" 0.18 0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="+" align="center" position=" 0.18 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
-
-        <!-- Path range row -->
-        <a-text value="Range"   align="left"  position="-0.85 -0.06 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="range-" width="0.13" height="0.10" position="-0.32 -0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="-" align="center" position="-0.32 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
-        <a-text  id="vrRangeVal" value="100%" align="center" position="-0.07 -0.06 0.001" color="#fff" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="range+" width="0.13" height="0.10" position=" 0.18 -0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="+" align="center" position=" 0.18 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
-
-        <!-- Color row (active swatch is marked by the white highlight plane that sits underneath). -->
-        <a-text value="Color"   align="left"  position="-0.85 -0.20 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-        <a-plane id="vrColorActive" width="0.115" height="0.115" position="-0.30 -0.20 0.0005" color="#ffffff" material="shader: flat; side: double"></a-plane>
-        <a-plane class="ui-btn" data-action="color" data-value="red"   width="0.10" height="0.10" position="-0.30 -0.20 0.001" color="#d81414" material="shader: flat; side: double"></a-plane>
-        <a-plane class="ui-btn" data-action="color" data-value="amber" width="0.10" height="0.10" position="-0.16 -0.20 0.001" color="#ffaa28" material="shader: flat; side: double"></a-plane>
-        <a-plane class="ui-btn" data-action="color" data-value="cyan"  width="0.10" height="0.10" position="-0.02 -0.20 0.001" color="#28d2ff" material="shader: flat; side: double"></a-plane>
-        <a-plane class="ui-btn" data-action="color" data-value="white" width="0.10" height="0.10" position=" 0.12 -0.20 0.001" color="#f8f8fc" material="shader: flat; side: double"></a-plane>
-
-        <!-- Eyes row: monocular training. Active eye-mode is shown by the white highlight underneath. -->
-        <a-text value="Eyes"    align="left"  position="-0.85 -0.32 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-        <a-plane id="vrEyeActive" width="0.215" height="0.115" position="-0.32 -0.32 0.0005" color="#ffffff" material="shader: flat; side: double"></a-plane>
-        <a-plane class="ui-btn" data-action="eye" data-value="both"  width="0.20" height="0.10" position="-0.32 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="Both" align="center" position="-0.32 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="eye" data-value="left"  width="0.20" height="0.10" position="-0.07 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="Left" align="center" position="-0.07 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="eye" data-value="right" width="0.20" height="0.10" position=" 0.18 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="Right" align="center" position=" 0.18 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
-
-        <!-- Routine row -->
-        <a-text value="Routine" align="left"  position="-0.85 -0.43 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="prev" width="0.20" height="0.10" position="-0.36 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="Prev" align="center" position="-0.36 -0.43 0.002" color="#fff" width="0.95" side="double"></a-text>
-        <a-text  id="vrRoutineMini" value="Circle" align="center" position="-0.07 -0.43 0.001" color="#fff" width="1.05" side="double"></a-text>
-        <a-plane class="ui-btn" data-action="next" width="0.20" height="0.10" position=" 0.22 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="Next" align="center" position=" 0.22 -0.43 0.002" color="#fff" width="0.95" side="double"></a-text>
-
-        <!-- Action row -->
-        <a-plane class="ui-btn" data-action="pause"    width="0.34" height="0.13" position="-0.65 -0.55 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-        <a-text  id="vrPauseLabel" value="Pause" align="center" position="-0.65 -0.55 0.002" color="#fff" width="1.0" side="double"></a-text>
-
-        <a-plane class="ui-btn" data-action="recenter" width="0.40" height="0.13" position=" 0.45 -0.55 0.001" color="#1c3a4a" material="shader: flat; side: double"></a-plane>
-        <a-text  value="Recenter" align="center" position=" 0.45 -0.55 0.002" color="#fff" width="1.05" side="double"></a-text>
-      </a-entity>
     </a-entity>
 
     <a-entity id="leftHand"  laser-controls="hand: left"
@@ -203,6 +131,68 @@
 
     <!-- Container for multi-target saccade routines (populated dynamically). -->
     <a-entity id="multi-balls"></a-entity>
+
+    <!-- Control panel lives in world space (NOT on the camera). Placed well below the ball so you
+         look down to use it; it does not follow your head. -->
+    <a-entity id="vr-panel" position="0 -1.55 0.55" rotation="-52 0 0" scale="0.58 0.58 0.58">
+      <a-plane width="1.78" height="1.10" color="#1a1a26"
+               material="shader: flat; transparent: false; side: double"></a-plane>
+
+      <a-text id="vrRoutineLabel" value="Circle"
+              align="center" position="0 0.40 0.001" color="#e8e8ee" width="2.6" side="double"></a-text>
+      <a-text id="vrInfoLabel" value="Speed 2.0   .   Range 100%   .   0:00"
+              align="center" position="0 0.31 0.001" color="#9aa0aa" width="1.9" side="double"></a-text>
+
+      <a-text value="Speed"   align="left"  position="-0.85 0.18 0.001" color="#cccccc" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="speed-" width="0.13" height="0.10" position="-0.32 0.18 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="-" align="center" position="-0.32 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
+      <a-text  id="vrSpeedVal" value="2.0" align="center" position="-0.07 0.18 0.001" color="#fff" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="speed+" width="0.13" height="0.10" position=" 0.18 0.18 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="+" align="center" position=" 0.18 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
+
+      <a-text value="Size"    align="left"  position="-0.85 0.06 0.001" color="#cccccc" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="size-" width="0.13" height="0.10" position="-0.32 0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="-" align="center" position="-0.32 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
+      <a-text  id="vrSizeVal" value="32" align="center" position="-0.07 0.06 0.001" color="#fff" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="size+" width="0.13" height="0.10" position=" 0.18 0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="+" align="center" position=" 0.18 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
+
+      <a-text value="Range"   align="left"  position="-0.85 -0.06 0.001" color="#cccccc" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="range-" width="0.13" height="0.10" position="-0.32 -0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="-" align="center" position="-0.32 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
+      <a-text  id="vrRangeVal" value="100%" align="center" position="-0.07 -0.06 0.001" color="#fff" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="range+" width="0.13" height="0.10" position=" 0.18 -0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="+" align="center" position=" 0.18 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
+
+      <a-text value="Color"   align="left"  position="-0.85 -0.20 0.001" color="#cccccc" width="1.05" side="double"></a-text>
+      <a-plane id="vrColorActive" width="0.115" height="0.115" position="-0.30 -0.20 0.0005" color="#ffffff" material="shader: flat; side: double"></a-plane>
+      <a-plane class="ui-btn" data-action="color" data-value="red"   width="0.10" height="0.10" position="-0.30 -0.20 0.001" color="#d81414" material="shader: flat; side: double"></a-plane>
+      <a-plane class="ui-btn" data-action="color" data-value="amber" width="0.10" height="0.10" position="-0.16 -0.20 0.001" color="#ffaa28" material="shader: flat; side: double"></a-plane>
+      <a-plane class="ui-btn" data-action="color" data-value="cyan"  width="0.10" height="0.10" position="-0.02 -0.20 0.001" color="#28d2ff" material="shader: flat; side: double"></a-plane>
+      <a-plane class="ui-btn" data-action="color" data-value="white" width="0.10" height="0.10" position=" 0.12 -0.20 0.001" color="#f8f8fc" material="shader: flat; side: double"></a-plane>
+
+      <a-text value="Eyes"    align="left"  position="-0.85 -0.32 0.001" color="#cccccc" width="1.05" side="double"></a-text>
+      <a-plane id="vrEyeActive" width="0.215" height="0.115" position="-0.32 -0.32 0.0005" color="#ffffff" material="shader: flat; side: double"></a-plane>
+      <a-plane class="ui-btn" data-action="eye" data-value="both"  width="0.20" height="0.10" position="-0.32 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Both" align="center" position="-0.32 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="eye" data-value="left"  width="0.20" height="0.10" position="-0.07 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Left" align="center" position="-0.07 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="eye" data-value="right" width="0.20" height="0.10" position=" 0.18 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Right" align="center" position=" 0.18 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
+
+      <a-text value="Routine" align="left"  position="-0.85 -0.43 0.001" color="#cccccc" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="prev" width="0.20" height="0.10" position="-0.36 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Prev" align="center" position="-0.36 -0.43 0.002" color="#fff" width="0.95" side="double"></a-text>
+      <a-text  id="vrRoutineMini" value="Circle" align="center" position="-0.07 -0.43 0.001" color="#fff" width="1.05" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="next" width="0.20" height="0.10" position=" 0.22 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Next" align="center" position=" 0.22 -0.43 0.002" color="#fff" width="0.95" side="double"></a-text>
+
+      <a-plane class="ui-btn" data-action="pause"    width="0.34" height="0.13" position="-0.65 -0.55 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  id="vrPauseLabel" value="Pause" align="center" position="-0.65 -0.55 0.002" color="#fff" width="1.0" side="double"></a-text>
+
+      <a-plane class="ui-btn" data-action="recenter" width="0.40" height="0.13" position=" 0.45 -0.55 0.001" color="#1c3a4a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Recenter" align="center" position=" 0.45 -0.55 0.002" color="#fff" width="1.05" side="double"></a-text>
+    </a-entity>
 
   </a-entity>
 </a-scene>
