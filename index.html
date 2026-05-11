@@ -132,24 +132,23 @@
     <!-- Container for multi-target saccade routines (populated dynamically). -->
     <a-entity id="multi-balls"></a-entity>
 
-    <!-- In-world control panel: a 1:1 mirror of the desktop HTML overlay so VR has the same controls.
-         Positioned ~1.1 m below eye level and tilted up so it sits outside the central gaze cone
-         while you stare at the target. Toggle visibility with the Menu button on either controller,
-         or by pressing M on the keyboard, or by clicking the bottom-left "Menu" pill in the overlay. -->
-    <a-entity id="vr-panel" position="0 -1.05 0.45" rotation="-40 0 0" scale="0.78 0.78 0.78">
+    <!-- In-world control panel. Lowered + tilted further so you have to clearly look down to see it.
+         All glyphs are ASCII (the default Roboto MSDF font Quest uses doesn't include arrows /
+         math minus, so Unicode "←", "→", "−" rendered as blank squares before). -->
+    <a-entity id="vr-panel" position="0 -1.15 0.65" rotation="-55 0 0" scale="0.65 0.65 0.65">
       <a-plane width="1.78" height="1.10" color="#1a1a26"
                material="shader: flat; transparent: false; side: double"></a-plane>
 
-      <!-- Header (matches "routineName · Speed · Range · Session") -->
+      <!-- Header (matches "routineName . Speed . Range . Session") -->
       <a-text id="vrRoutineLabel" value="Circle"
               align="center" position="0 0.40 0.001" color="#e8e8ee" width="2.6" side="double"></a-text>
-      <a-text id="vrInfoLabel" value="Speed 2.0   ·   Range 100%   ·   0:00"
+      <a-text id="vrInfoLabel" value="Speed 2.0   .   Range 100%   .   0:00"
               align="center" position="0 0.31 0.001" color="#9aa0aa" width="1.9" side="double"></a-text>
 
       <!-- Speed row -->
       <a-text value="Speed"   align="left"  position="-0.85 0.18 0.001" color="#cccccc" width="1.05" side="double"></a-text>
       <a-plane class="ui-btn" data-action="speed-" width="0.13" height="0.10" position="-0.32 0.18 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-      <a-text  value="−" align="center" position="-0.32 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
+      <a-text  value="-" align="center" position="-0.32 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
       <a-text  id="vrSpeedVal" value="2.0" align="center" position="-0.07 0.18 0.001" color="#fff" width="1.05" side="double"></a-text>
       <a-plane class="ui-btn" data-action="speed+" width="0.13" height="0.10" position=" 0.18 0.18 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
       <a-text  value="+" align="center" position=" 0.18 0.18 0.002" color="#fff" width="1.6" side="double"></a-text>
@@ -157,7 +156,7 @@
       <!-- Size row -->
       <a-text value="Size"    align="left"  position="-0.85 0.06 0.001" color="#cccccc" width="1.05" side="double"></a-text>
       <a-plane class="ui-btn" data-action="size-" width="0.13" height="0.10" position="-0.32 0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-      <a-text  value="−" align="center" position="-0.32 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
+      <a-text  value="-" align="center" position="-0.32 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
       <a-text  id="vrSizeVal" value="32" align="center" position="-0.07 0.06 0.001" color="#fff" width="1.05" side="double"></a-text>
       <a-plane class="ui-btn" data-action="size+" width="0.13" height="0.10" position=" 0.18 0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
       <a-text  value="+" align="center" position=" 0.18 0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
@@ -165,7 +164,7 @@
       <!-- Path range row -->
       <a-text value="Range"   align="left"  position="-0.85 -0.06 0.001" color="#cccccc" width="1.05" side="double"></a-text>
       <a-plane class="ui-btn" data-action="range-" width="0.13" height="0.10" position="-0.32 -0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-      <a-text  value="−" align="center" position="-0.32 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
+      <a-text  value="-" align="center" position="-0.32 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
       <a-text  id="vrRangeVal" value="100%" align="center" position="-0.07 -0.06 0.001" color="#fff" width="1.05" side="double"></a-text>
       <a-plane class="ui-btn" data-action="range+" width="0.13" height="0.10" position=" 0.18 -0.06 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
       <a-text  value="+" align="center" position=" 0.18 -0.06 0.002" color="#fff" width="1.6" side="double"></a-text>
@@ -188,13 +187,13 @@
       <a-plane class="ui-btn" data-action="eye" data-value="right" width="0.20" height="0.10" position=" 0.18 -0.32 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
       <a-text  value="Right" align="center" position=" 0.18 -0.32 0.002" color="#fff" width="1.0" side="double"></a-text>
 
-      <!-- Routine row (matches the original bottom arrows + selector dropdown). -->
+      <!-- Routine row (Prev / Next using ASCII "Prev" / "Next" so the button labels actually appear) -->
       <a-text value="Routine" align="left"  position="-0.85 -0.43 0.001" color="#cccccc" width="1.05" side="double"></a-text>
-      <a-plane class="ui-btn" data-action="prev" width="0.13" height="0.10" position="-0.32 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-      <a-text  value="←" align="center" position="-0.32 -0.43 0.002" color="#fff" width="1.5" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="prev" width="0.20" height="0.10" position="-0.36 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Prev" align="center" position="-0.36 -0.43 0.002" color="#fff" width="0.95" side="double"></a-text>
       <a-text  id="vrRoutineMini" value="Circle" align="center" position="-0.07 -0.43 0.001" color="#fff" width="1.05" side="double"></a-text>
-      <a-plane class="ui-btn" data-action="next" width="0.13" height="0.10" position=" 0.18 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
-      <a-text  value="→" align="center" position=" 0.18 -0.43 0.002" color="#fff" width="1.5" side="double"></a-text>
+      <a-plane class="ui-btn" data-action="next" width="0.20" height="0.10" position=" 0.22 -0.43 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
+      <a-text  value="Next" align="center" position=" 0.22 -0.43 0.002" color="#fff" width="0.95" side="double"></a-text>
 
       <!-- Action row -->
       <a-plane class="ui-btn" data-action="pause"    width="0.34" height="0.13" position="-0.65 -0.55 0.001" color="#23293a" material="shader: flat; side: double"></a-plane>
@@ -395,13 +394,15 @@ AFRAME.registerComponent('trainer', {
 
     this.el.addEventListener('enter-vr', () => {
       document.body.classList.add('in-vr');
-      // Reset world transform when entering immersive — a bad Recenter from desktop can leave
-      // the scene behind or below you; Quest then shows an empty/black view.
       const w = document.getElementById('world');
-      if (w) {
-        w.object3D.position.set(0, 1.6, -2);
-        w.object3D.rotation.set(0, 0, 0);
-      }
+      if (!w) return;
+      // Initial safe pose. Then schedule a few delayed samples of the actual headset pose so
+      // the ball ends up at YOUR real eye height (not the 1.6 m default). We retry across a
+      // few frames because the XR camera pose isn't valid on the very first frame after enter-vr.
+      w.object3D.position.set(0, 1.6, -2);
+      w.object3D.rotation.set(0, 0, 0);
+      this._needsHeightSnap = true;
+      this._heightSnapDeadline = performance.now() + 1500;
     });
     this.el.addEventListener('exit-vr',  () => {
       document.body.classList.remove('in-vr');
@@ -413,6 +414,34 @@ AFRAME.registerComponent('trainer', {
       updateRoutine(dts);
       state.sessionSec += dt / 1000;
     }
+
+    // Sample the user's real eye height a few frames after entering VR and place the ball there.
+    // Quest needs a moment after enter-vr before the XR pose becomes valid; we keep trying for
+    // up to ~1.5 s, accepting the first plausible reading (height between 0.6 m and 2.4 m).
+    if (this._needsHeightSnap) {
+      const cam = this.el.sceneEl.camera;
+      const w   = document.getElementById('world');
+      if (cam && w) {
+        const p = new THREE.Vector3();
+        cam.getWorldPosition(p);
+        if (p.y > 0.6 && p.y < 2.4) {
+          // Place the world 2 m in front of the user along the camera's horizontal forward,
+          // at the user's actual eye height.
+          const dir = new THREE.Vector3();
+          cam.getWorldDirection(dir);
+          const fwd = new THREE.Vector3(dir.x, 0, dir.z);
+          if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+          fwd.normalize();
+          w.object3D.position.set(p.x + fwd.x * 2.0, p.y, p.z + fwd.z * 2.0);
+          const yaw = Math.atan2(-fwd.x, -fwd.z);
+          w.object3D.rotation.set(0, yaw, 0);
+          this._needsHeightSnap = false;
+        } else if (performance.now() > this._heightSnapDeadline) {
+          this._needsHeightSnap = false;
+        }
+      }
+    }
+
     applyToScene();
     syncHud();
   }
