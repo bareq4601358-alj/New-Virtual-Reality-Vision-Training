@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Vision Training · VR</title>
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- 1.6.x has WebXR fixes vs 1.5 on some Quest / Meta Browser builds -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <style>
     html, body { margin: 0; padding: 0; background: #08080c; font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: #ccc; overflow: hidden; }
     a-scene { width: 100vw; height: 100vh; }
@@ -88,7 +89,7 @@
 <a-scene
   background="color: #08080c"
   vr-mode-ui="enabled: true"
-  renderer="antialias: true; colorManagement: true"
+  renderer="antialias: true; colorManagement: false; alpha: false"
   device-orientation-permission-ui="enabled: false"
   trainer>
 
@@ -119,17 +120,13 @@
        of the desktop camera (eye level, on the world axis). -->
   <a-entity id="world" position="0 1.6 -2" rotation="0 0 0">
 
-    <!-- Single moving target. Real 3D sphere (outer color) + small "fixation cap" disc that
-         camera-facing-cap pins to the visible side of the sphere each frame so the bullseye
-         center is always readable. Flat shader is used because Quest reliably renders it and we
-         don't depend on lights, which keeps the scene bulletproof in VR. -->
+    <!-- 3D bullseye: outer sphere + inner sphere offset in local +Z (no per-frame lookAt — safer in WebXR stereo). -->
     <a-entity id="ball" scale="0.14 0.14 0.14" position="0 0 0">
       <a-sphere class="ball-outer" radius="0.5"
-                segments-width="32" segments-height="20"
-                material="shader: flat; color: #d81414; transparent: false; side: front"></a-sphere>
-      <a-circle class="ball-inner" radius="0.22" segments="24"
-                material="shader: flat; color: #ffffff; transparent: false; side: double; depthWrite: true"
-                camera-facing-cap="offset: 0.508"></a-circle>
+                segments-width="24" segments-height="16"
+                material="shader: flat; color: #d81414; transparent: false; side: double"></a-sphere>
+      <a-sphere class="ball-inner" radius="0.22" position="0 0 0.32"
+                material="shader: flat; color: #ffffff; transparent: false; side: double; depthTest: true; depthWrite: true"></a-sphere>
     </a-entity>
 
     <!-- Container for multi-target saccade routines (populated dynamically). -->
@@ -340,33 +337,6 @@ function applyPalette() {
    A-Frame components
 ------------------------------------------------------------------ */
 
-/* "Sticks" a child entity (the inner bullseye disc) onto the camera-facing side of its parent
-   sphere each frame, so the fixation dot is always centered in the user's view of the ball.
-   Computes parent-local camera direction and places the cap at unit_dir * offset. */
-AFRAME.registerComponent('camera-facing-cap', {
-  schema: { offset: { default: 0.5 } },
-  init() {
-    this._world = new THREE.Vector3();
-    this._local = new THREE.Vector3();
-  },
-  tick() {
-    try {
-      const cam = this.el.sceneEl && this.el.sceneEl.camera;
-      if (!cam) return;
-      const parent = this.el.object3D.parent;
-      if (!parent) return;
-      parent.updateMatrixWorld(true);
-      cam.getWorldPosition(this._world);
-      this._local.copy(this._world);
-      parent.worldToLocal(this._local);
-      const len = this._local.length();
-      if (!isFinite(len) || len < 1e-6) return;
-      this.el.object3D.position.copy(this._local).multiplyScalar(this.data.offset / len);
-      this.el.object3D.lookAt(this._world);
-    } catch (e) { /* never let a bad frame from the cap kill the render */ }
-  }
-});
-
 /* Per-controller input: trigger=next, grip=prev, A/X=pause, B/Y=recenter,
    thumbstick click=show/hide menu, thumbstick Y=speed. The Quest "menu" button (left controller)
    also toggles the menu, which is the most natural mapping for hiding UI. */
@@ -425,6 +395,13 @@ AFRAME.registerComponent('trainer', {
 
     this.el.addEventListener('enter-vr', () => {
       document.body.classList.add('in-vr');
+      // Reset world transform when entering immersive — a bad Recenter from desktop can leave
+      // the scene behind or below you; Quest then shows an empty/black view.
+      const w = document.getElementById('world');
+      if (w) {
+        w.object3D.position.set(0, 1.6, -2);
+        w.object3D.rotation.set(0, 0, 0);
+      }
     });
     this.el.addEventListener('exit-vr',  () => {
       document.body.classList.remove('in-vr');
@@ -550,23 +527,21 @@ function rebuildMultiBalls() {
     const outer = document.createElement('a-sphere');
     outer.setAttribute('class', 'ball-outer');
     outer.setAttribute('radius', '0.5');
-    outer.setAttribute('segments-width', '32');
-    outer.setAttribute('segments-height', '20');
-    outer.setAttribute('material', `shader: flat; color: ${outerHex}; transparent: false; side: front`);
+    outer.setAttribute('segments-width', '24');
+    outer.setAttribute('segments-height', '16');
+    outer.setAttribute('material', `shader: flat; color: ${outerHex}; transparent: false; side: double`);
     e.appendChild(outer);
 
-    const inner = document.createElement('a-circle');
+    const inner = document.createElement('a-sphere');
     inner.setAttribute('class', 'ball-inner');
     inner.setAttribute('radius', '0.22');
-    inner.setAttribute('segments', '24');
-    inner.setAttribute('material', `shader: flat; color: ${innerHex}; transparent: false; side: double; depthWrite: true`);
-    inner.setAttribute('camera-facing-cap', 'offset: 0.508');
+    inner.setAttribute('position', '0 0 0.32');
+    inner.setAttribute('material', `shader: flat; color: ${innerHex}; transparent: false; side: double; depthTest: true; depthWrite: true`);
     e.appendChild(inner);
 
     multi.appendChild(e);
   });
 
-  // New meshes need the current eye mask reapplied so they end up on the right layer.
   applyEyeLayers(true);
 }
 
