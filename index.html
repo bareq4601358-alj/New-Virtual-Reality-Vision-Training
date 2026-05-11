@@ -88,8 +88,7 @@
 <a-scene
   background="color: #08080c"
   vr-mode-ui="enabled: true"
-  webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: bounded-floor,hand-tracking"
-  renderer="antialias: true; colorManagement: true; foveationLevel: 1; highRefreshRate: true"
+  renderer="antialias: true; colorManagement: true"
   device-orientation-permission-ui="enabled: false"
   trainer>
 
@@ -426,21 +425,9 @@ AFRAME.registerComponent('trainer', {
 
     this.el.addEventListener('enter-vr', () => {
       document.body.classList.add('in-vr');
-      // Pin the world to a known-safe spot so nothing else can have moved it: 2 m straight ahead
-      // at standing eye height, facing the user. This prevents the "world ends up at floor level"
-      // failure mode that turned VR into pitch black on Quest.
-      const w = document.getElementById('world');
-      if (w) { w.object3D.position.set(0, 1.6, -2); w.object3D.rotation.set(0, 0, 0); }
-      // Show the floating control panel by default in VR so the user is never staring at nothing.
-      const panel = document.getElementById('vr-panel');
-      if (panel) panel.object3D.visible = true;
-      applyEyeLayers(true);
     });
     this.el.addEventListener('exit-vr',  () => {
       document.body.classList.remove('in-vr');
-      const panel = document.getElementById('vr-panel');
-      if (panel) panel.object3D.visible = true;
-      applyEyeLayers(true);
     });
   },
   tick(t, dt) {
@@ -454,39 +441,11 @@ AFRAME.registerComponent('trainer', {
   }
 });
 
-/* Per-eye occlusion using three.js's built-in stereo layers.
-   In WebXR three.js sets cameraL.layers.mask = camera.layers.mask | bit1
-   and cameraR.layers.mask = camera.layers.mask | bit2 every frame, so:
-     - Objects on layer 0 are visible to BOTH eyes (default).
-     - Objects on layer 1 are visible to the LEFT eye only.
-     - Objects on layer 2 are visible to the RIGHT eye only.
-   Switching all renderable scene meshes to the appropriate layer therefore masks one eye
-   reliably without us having to fight three.js's per-frame layer overrides.
-
-   Out of VR everything stays on layer 0 so the desktop view is always normal. */
-let _appliedEyeLayer = -1;
-function applyEyeLayers(force) {
-  const sceneEl = document.querySelector('a-scene');
-  if (!sceneEl) return;
-  const inXR = sceneEl.is && sceneEl.is('vr-mode');
-  let layer = 0;
-  if (inXR) {
-    if (state.eyeMode === 'left')  layer = 1;  // Train LEFT  → only left sub-camera renders.
-    if (state.eyeMode === 'right') layer = 2;  // Train RIGHT → only right sub-camera renders.
-  }
-  if (!force && layer === _appliedEyeLayer) return;
-  _appliedEyeLayer = layer;
-
-  // Walk only the world entity (ball, multi-balls, panel) — never touch cameras/controllers.
-  const targets = [
-    document.getElementById('world'),
-    document.getElementById('multi-balls')
-  ];
-  targets.forEach(root => {
-    if (!root || !root.object3D) return;
-    root.object3D.traverse(c => { if (c.isMesh) c.layers.set(layer); });
-  });
-}
+/* Per-eye occlusion is temporarily disabled while we get immersive VR rendering rock-solid on
+   Quest. Mutating mesh layers can interact badly with the WebXR camera setup — we'll bring this
+   feature back with a safer implementation once basic VR is reliable. For now, switching the
+   eye selector just updates the UI state and does not change rendering. */
+function applyEyeLayers(_force) { /* no-op for now */ }
 
 /* ------------------------------------------------------------------
    Recenter — moves the entire scene in front of the user's current pose
