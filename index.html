@@ -351,19 +351,20 @@ AFRAME.registerComponent('camera-facing-cap', {
     this._local = new THREE.Vector3();
   },
   tick() {
-    const cam = this.el.sceneEl && this.el.sceneEl.camera;
-    if (!cam) return;
-    const parent = this.el.object3D.parent;
-    if (!parent) return;
-    // Make sure the parent's world matrix reflects this frame's position update from trainer.tick.
-    parent.updateMatrixWorld(true);
-    cam.getWorldPosition(this._world);
-    this._local.copy(this._world);
-    parent.worldToLocal(this._local);
-    const len = this._local.length();
-    if (len < 1e-6) return;
-    this.el.object3D.position.copy(this._local).multiplyScalar(this.data.offset / len);
-    this.el.object3D.lookAt(this._world);
+    try {
+      const cam = this.el.sceneEl && this.el.sceneEl.camera;
+      if (!cam) return;
+      const parent = this.el.object3D.parent;
+      if (!parent) return;
+      parent.updateMatrixWorld(true);
+      cam.getWorldPosition(this._world);
+      this._local.copy(this._world);
+      parent.worldToLocal(this._local);
+      const len = this._local.length();
+      if (!isFinite(len) || len < 1e-6) return;
+      this.el.object3D.position.copy(this._local).multiplyScalar(this.data.offset / len);
+      this.el.object3D.lookAt(this._world);
+    } catch (e) { /* never let a bad frame from the cap kill the render */ }
   }
 });
 
@@ -425,16 +426,14 @@ AFRAME.registerComponent('trainer', {
 
     this.el.addEventListener('enter-vr', () => {
       document.body.classList.add('in-vr');
-      // Hide the floating control panel by default in VR so it stays out of your gaze; the user
-      // can summon it any time with thumbstick-click, the Menu button, or the M keyboard key.
+      // Pin the world to a known-safe spot so nothing else can have moved it: 2 m straight ahead
+      // at standing eye height, facing the user. This prevents the "world ends up at floor level"
+      // failure mode that turned VR into pitch black on Quest.
+      const w = document.getElementById('world');
+      if (w) { w.object3D.position.set(0, 1.6, -2); w.object3D.rotation.set(0, 0, 0); }
+      // Show the floating control panel by default in VR so the user is never staring at nothing.
       const panel = document.getElementById('vr-panel');
-      if (panel) panel.object3D.visible = false;
-      // Don't recenter immediately — the headset pose hasn't replaced the camera transform yet
-      // and snapshotting it now would drop the world somewhere wrong (often at floor level).
-      // Instead, wait until we've seen a few real XR frames with a non-default pose, then snap.
-      this._needsAutoRecenter = true;
-      this._autoRecenterFrames = 0;
-      // Apply current eye-mask now that we have stereo cameras.
+      if (panel) panel.object3D.visible = true;
       applyEyeLayers(true);
     });
     this.el.addEventListener('exit-vr',  () => {
@@ -450,23 +449,6 @@ AFRAME.registerComponent('trainer', {
       updateRoutine(dts);
       state.sessionSec += dt / 1000;
     }
-
-    // Once in VR, wait until the camera reports a real head pose (non-zero, height > 0.5 m)
-    // for ~10 stable frames, then auto-recenter ONCE so the scene is in front of the user.
-    if (this._needsAutoRecenter) {
-      const cam = this.el.sceneEl.camera;
-      if (cam) {
-        cam.getWorldPosition(this._tmpVec);
-        if (this._tmpVec.y > 0.5 && (Math.abs(this._tmpVec.x) + Math.abs(this._tmpVec.z) + this._tmpVec.y) > 1e-3) {
-          this._autoRecenterFrames++;
-          if (this._autoRecenterFrames >= 10) {
-            recenterWorld();
-            this._needsAutoRecenter = false;
-          }
-        }
-      }
-    }
-
     applyToScene();
     syncHud();
   }
@@ -510,14 +492,21 @@ function applyEyeLayers(force) {
    Recenter — moves the entire scene in front of the user's current pose
 ------------------------------------------------------------------ */
 function recenterWorld() {
-  const camEl  = document.querySelector('#cam');
-  const world  = document.querySelector('#world');
-  if (!camEl || !world) return;
+  const sceneEl = document.querySelector('a-scene');
+  const world   = document.querySelector('#world');
+  if (!sceneEl || !world) return;
+
+  // Use the LIVE perspective camera (sceneEl.camera) for position/orientation, not the entity
+  // wrapper. In VR with a local-floor reference space, A-Frame zeros out the camera entity's
+  // wrapper Y so eye height isn't doubled; reading from the wrapper would put us at floor level
+  // and drop the whole scene below your feet (which is what made VR look pitch black).
+  const cam = sceneEl.camera;
+  if (!cam) return;
 
   const camPos = new THREE.Vector3();
   const camDir = new THREE.Vector3();
-  camEl.object3D.getWorldPosition(camPos);
-  camEl.object3D.getWorldDirection(camDir); // returns the -Z direction the camera is facing
+  cam.getWorldPosition(camPos);
+  cam.getWorldDirection(camDir); // returns the -Z direction the camera is facing
 
   // Forward direction projected onto the horizontal plane, normalized.
   const fwd = new THREE.Vector3(camDir.x, 0, camDir.z);
