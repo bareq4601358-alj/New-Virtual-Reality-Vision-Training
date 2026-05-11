@@ -143,8 +143,11 @@
     <!-- Container for multi-target saccade routines (populated dynamically). -->
     <a-entity id="multi-balls"></a-entity>
 
-    <!-- In-world control panel: a 1:1 mirror of the desktop HTML overlay so VR has the same controls. -->
-    <a-entity id="vr-panel" position="0 -0.7 0.3" rotation="-25 0 0">
+    <!-- In-world control panel: a 1:1 mirror of the desktop HTML overlay so VR has the same controls.
+         Positioned ~1.1 m below eye level and tilted up so it sits outside the central gaze cone
+         while you stare at the target. Toggle visibility with the Menu button on either controller,
+         or by pressing M on the keyboard, or by clicking the bottom-left "Menu" pill in the overlay. -->
+    <a-entity id="vr-panel" position="0 -1.05 0.45" rotation="-40 0 0" scale="0.78 0.78 0.78">
       <a-plane width="1.78" height="1.10" color="#1a1a26"
                material="shader: flat; transparent: false; side: double"></a-plane>
 
@@ -257,7 +260,7 @@
   </div>
 
   <div id="vr-hint">
-    <strong>VR controls:</strong> Trigger = next · Grip = prev · A/X = pause · B/Y = recenter · Thumbstick ↑/↓ = speed
+    <strong>VR controls:</strong> Trigger = next · Grip = prev · A/X = pause · B/Y = recenter · Thumbstick click or Menu = hide/show panel · Thumbstick ↑/↓ = speed
   </div>
 </div>
 
@@ -371,7 +374,9 @@ AFRAME.registerComponent('camera-facing-cap', {
   }
 });
 
-/* Per-controller input: trigger=next, grip=prev, A/X=pause, B/Y=recenter, thumbstick Y=speed. */
+/* Per-controller input: trigger=next, grip=prev, A/X=pause, B/Y=recenter,
+   thumbstick click=show/hide menu, thumbstick Y=speed. The Quest "menu" button (left controller)
+   also toggles the menu, which is the most natural mapping for hiding UI. */
 AFRAME.registerComponent('vr-input', {
   schema: { hand: { default: 'right' } },
   init() {
@@ -383,6 +388,10 @@ AFRAME.registerComponent('vr-input', {
     const recenterBtn = this.data.hand === 'right' ? 'bbuttondown' : 'ybuttondown';
     this.el.addEventListener(pauseBtn,    () => togglePause());
     this.el.addEventListener(recenterBtn, () => recenterWorld());
+
+    // Either thumbstick click or the system menu button toggles the floating panel.
+    this.el.addEventListener('thumbstickdown', () => toggleVrPanel());
+    this.el.addEventListener('menudown',       () => toggleVrPanel());
 
     this.el.addEventListener('thumbstickmoved', (e) => { this.thumbY = e.detail.y || 0; });
   },
@@ -407,12 +416,17 @@ AFRAME.registerComponent('trainer', {
     this._tmpB   = new THREE.Vector3();
     this._tmpC   = new THREE.Vector3();
 
-    // Put the eye-blocker (and any child meshes a-frame creates) on layer 1 only,
-    // so neither eye sees it until eye-mode logic enables layer 1 on that eye.
+    // Put the eye-blocker (and any child meshes A-Frame creates) on layer 3 only.
+    // IMPORTANT: three.js's WebXRManager reserves layer 1 (left-eye) and layer 2 (right-eye)
+    // for stereo rendering and re-enables them on the sub-cameras every XR frame, so a blocker
+    // on layer 1 would always render in the left eye -> half the world goes black. Layer 3 is
+    // user-free; neither sub-camera has it enabled by default, so the blocker is invisible
+    // unless the eye-mode logic explicitly enables layer 3 on the eye we want to mask.
     const setBlockerLayer = () => {
       this.blocker.object3D.traverse(c => {
-        c.layers.set(1);
+        c.layers.set(3);
         c.frustumCulled = false;
+        if (c.material) c.renderOrder = 9999;
       });
     };
     if (this.blocker.hasLoaded) setBlockerLayer();
@@ -476,7 +490,7 @@ AFRAME.registerComponent('trainer', {
   }
 });
 
-/* Configures which XR sub-camera renders layer 1 (the black blocker plane).
+/* Configures which XR sub-camera renders layer 3 (the black blocker plane).
    Out of VR there are no sub-cameras, so this is a no-op and the blocker stays invisible. */
 function updateEyeMask() {
   const sceneEl = document.querySelector('a-scene');
@@ -485,16 +499,14 @@ function updateEyeMask() {
   if (!xrCam || !xrCam.cameras || xrCam.cameras.length < 2) return;
   const left  = xrCam.cameras[0];
   const right = xrCam.cameras[1];
+  // Default: blocker layer disabled on both -> nothing is masked.
+  left.layers.disable(3);
+  right.layers.disable(3);
   if (state.eyeMode === 'left') {
-    // Train left eye → black out right eye.
-    left.layers.disable(1);
-    right.layers.enable(1);
+    // Train LEFT eye → black out the right by enabling the blocker layer on the right sub-camera.
+    right.layers.enable(3);
   } else if (state.eyeMode === 'right') {
-    left.layers.enable(1);
-    right.layers.disable(1);
-  } else {
-    left.layers.disable(1);
-    right.layers.disable(1);
+    left.layers.enable(3);
   }
 }
 
@@ -930,6 +942,11 @@ function setEyeMode(mode) {
 function goNext() { state.current = (state.current + 1) % routines.length;          els.routineSelect.value = String(state.current); resetRoutine(); }
 function goPrev() { state.current = (state.current - 1 + routines.length) % routines.length; els.routineSelect.value = String(state.current); resetRoutine(); }
 function togglePause() { state.paused = !state.paused; }
+function toggleVrPanel() {
+  const p = document.getElementById('vr-panel');
+  if (!p) return;
+  p.object3D.visible = !p.object3D.visible;
+}
 
 /* ------------------------------------------------------------------
    Bind HTML overlay
@@ -958,6 +975,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'ArrowUp') setSpeed(state.speed + 0.2);
   else if (e.key === 'ArrowDown') setSpeed(state.speed - 0.2);
   else if (e.key === 'r' || e.key === 'R') recenterWorld();
+  else if (e.key === 'm' || e.key === 'M') toggleVrPanel();
   else if (e.key === 'h' || e.key === 'H') document.getElementById('overlay').classList.toggle('hidden');
   else if (e.key === 'v' || e.key === 'V') {
     const scene = document.querySelector('a-scene');
