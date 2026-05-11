@@ -105,14 +105,6 @@
       <a-entity cursor="rayOrigin: mouse; fuse: false"
                 raycaster="objects: .ui-btn; far: 25; interval: 80"
                 visible="false"></a-entity>
-
-      <!-- Per-eye blocker. Lives on layer 1; neither eye renders layer 1 by default, so it's
-           invisible until eye-mode logic enables layer 1 on the eye we want to mask. Huge plane
-           pinned 18 cm in front of the camera so it fully fills the view of either eye. -->
-      <a-entity id="eye-blocker"
-                geometry="primitive: plane; width: 10; height: 10"
-                material="shader: flat; color: #000000; transparent: false; side: double; depthWrite: true"
-                position="0 0 -0.18"></a-entity>
     </a-entity>
 
     <a-entity id="leftHand"  laser-controls="hand: left"
@@ -130,11 +122,12 @@
 
     <!-- Single moving target. Real 3D sphere (outer color) + small "fixation cap" disc that
          camera-facing-cap pins to the visible side of the sphere each frame so the bullseye
-         center is always readable. The whole rig is scaled by object3D.scale at runtime. -->
+         center is always readable. Flat shader is used because Quest reliably renders it and we
+         don't depend on lights, which keeps the scene bulletproof in VR. -->
     <a-entity id="ball" scale="0.14 0.14 0.14" position="0 0 0">
       <a-sphere class="ball-outer" radius="0.5"
                 segments-width="32" segments-height="20"
-                material="shader: standard; color: #d81414; metalness: 0.05; roughness: 0.45"></a-sphere>
+                material="shader: flat; color: #d81414; transparent: false; side: front"></a-sphere>
       <a-circle class="ball-inner" radius="0.22" segments="24"
                 material="shader: flat; color: #ffffff; transparent: false; side: double; depthWrite: true"
                 camera-facing-cap="offset: 0.508"></a-circle>
@@ -409,29 +402,8 @@ AFRAME.registerComponent('trainer', {
     this.ball    = document.querySelector('#ball');
     this.multi   = document.querySelector('#multi-balls');
     this.world   = document.querySelector('#world');
-    this.blocker = document.querySelector('#eye-blocker');
     this._tmpVec = new THREE.Vector3();
     this._tmpDir = new THREE.Vector3();
-    this._tmpA   = new THREE.Vector3();
-    this._tmpB   = new THREE.Vector3();
-    this._tmpC   = new THREE.Vector3();
-
-    // Put the eye-blocker (and any child meshes A-Frame creates) on layer 3 only.
-    // IMPORTANT: three.js's WebXRManager reserves layer 1 (left-eye) and layer 2 (right-eye)
-    // for stereo rendering and re-enables them on the sub-cameras every XR frame, so a blocker
-    // on layer 1 would always render in the left eye -> half the world goes black. Layer 3 is
-    // user-free; neither sub-camera has it enabled by default, so the blocker is invisible
-    // unless the eye-mode logic explicitly enables layer 3 on the eye we want to mask.
-    const setBlockerLayer = () => {
-      this.blocker.object3D.traverse(c => {
-        c.layers.set(3);
-        c.frustumCulled = false;
-        if (c.material) c.renderOrder = 9999;
-      });
-    };
-    if (this.blocker.hasLoaded) setBlockerLayer();
-    else this.blocker.addEventListener('loaded', setBlockerLayer);
-    this.blocker.addEventListener('object3dset', setBlockerLayer);
 
     this.el.addEventListener('click', (e) => {
       const ds = e.target && e.target.dataset;
@@ -453,13 +425,24 @@ AFRAME.registerComponent('trainer', {
 
     this.el.addEventListener('enter-vr', () => {
       document.body.classList.add('in-vr');
+      // Hide the floating control panel by default in VR so it stays out of your gaze; the user
+      // can summon it any time with thumbstick-click, the Menu button, or the M keyboard key.
+      const panel = document.getElementById('vr-panel');
+      if (panel) panel.object3D.visible = false;
       // Don't recenter immediately — the headset pose hasn't replaced the camera transform yet
       // and snapshotting it now would drop the world somewhere wrong (often at floor level).
       // Instead, wait until we've seen a few real XR frames with a non-default pose, then snap.
       this._needsAutoRecenter = true;
       this._autoRecenterFrames = 0;
+      // Apply current eye-mask now that we have stereo cameras.
+      applyEyeLayers(true);
     });
-    this.el.addEventListener('exit-vr',  () => document.body.classList.remove('in-vr'));
+    this.el.addEventListener('exit-vr',  () => {
+      document.body.classList.remove('in-vr');
+      const panel = document.getElementById('vr-panel');
+      if (panel) panel.object3D.visible = true;
+      applyEyeLayers(true);
+    });
   },
   tick(t, dt) {
     const dts = Math.min(dt / 1000, 0.05);
@@ -485,29 +468,42 @@ AFRAME.registerComponent('trainer', {
     }
 
     applyToScene();
-    updateEyeMask();
     syncHud();
   }
 });
 
-/* Configures which XR sub-camera renders layer 3 (the black blocker plane).
-   Out of VR there are no sub-cameras, so this is a no-op and the blocker stays invisible. */
-function updateEyeMask() {
+/* Per-eye occlusion using three.js's built-in stereo layers.
+   In WebXR three.js sets cameraL.layers.mask = camera.layers.mask | bit1
+   and cameraR.layers.mask = camera.layers.mask | bit2 every frame, so:
+     - Objects on layer 0 are visible to BOTH eyes (default).
+     - Objects on layer 1 are visible to the LEFT eye only.
+     - Objects on layer 2 are visible to the RIGHT eye only.
+   Switching all renderable scene meshes to the appropriate layer therefore masks one eye
+   reliably without us having to fight three.js's per-frame layer overrides.
+
+   Out of VR everything stays on layer 0 so the desktop view is always normal. */
+let _appliedEyeLayer = -1;
+function applyEyeLayers(force) {
   const sceneEl = document.querySelector('a-scene');
-  if (!sceneEl || !sceneEl.renderer || !sceneEl.renderer.xr) return;
-  const xrCam = sceneEl.renderer.xr.getCamera();
-  if (!xrCam || !xrCam.cameras || xrCam.cameras.length < 2) return;
-  const left  = xrCam.cameras[0];
-  const right = xrCam.cameras[1];
-  // Default: blocker layer disabled on both -> nothing is masked.
-  left.layers.disable(3);
-  right.layers.disable(3);
-  if (state.eyeMode === 'left') {
-    // Train LEFT eye → black out the right by enabling the blocker layer on the right sub-camera.
-    right.layers.enable(3);
-  } else if (state.eyeMode === 'right') {
-    left.layers.enable(3);
+  if (!sceneEl) return;
+  const inXR = sceneEl.is && sceneEl.is('vr-mode');
+  let layer = 0;
+  if (inXR) {
+    if (state.eyeMode === 'left')  layer = 1;  // Train LEFT  → only left sub-camera renders.
+    if (state.eyeMode === 'right') layer = 2;  // Train RIGHT → only right sub-camera renders.
   }
+  if (!force && layer === _appliedEyeLayer) return;
+  _appliedEyeLayer = layer;
+
+  // Walk only the world entity (ball, multi-balls, panel) — never touch cameras/controllers.
+  const targets = [
+    document.getElementById('world'),
+    document.getElementById('multi-balls')
+  ];
+  targets.forEach(root => {
+    if (!root || !root.object3D) return;
+    root.object3D.traverse(c => { if (c.isMesh) c.layers.set(layer); });
+  });
 }
 
 /* ------------------------------------------------------------------
@@ -608,7 +604,7 @@ function rebuildMultiBalls() {
     outer.setAttribute('radius', '0.5');
     outer.setAttribute('segments-width', '32');
     outer.setAttribute('segments-height', '20');
-    outer.setAttribute('material', `shader: standard; color: ${outerHex}; metalness: 0.05; roughness: 0.45`);
+    outer.setAttribute('material', `shader: flat; color: ${outerHex}; transparent: false; side: front`);
     e.appendChild(outer);
 
     const inner = document.createElement('a-circle');
@@ -621,6 +617,9 @@ function rebuildMultiBalls() {
 
     multi.appendChild(e);
   });
+
+  // New meshes need the current eye mask reapplied so they end up on the right layer.
+  applyEyeLayers(true);
 }
 
 function updateRoutine(dt) {
@@ -938,6 +937,7 @@ function setEyeMode(mode) {
   if (mode !== 'both' && mode !== 'left' && mode !== 'right') mode = 'both';
   state.eyeMode = mode;
   if (els.eyeModeSelect) els.eyeModeSelect.value = mode;
+  applyEyeLayers(true);
 }
 function goNext() { state.current = (state.current + 1) % routines.length;          els.routineSelect.value = String(state.current); resetRoutine(); }
 function goPrev() { state.current = (state.current - 1 + routines.length) % routines.length; els.routineSelect.value = String(state.current); resetRoutine(); }
@@ -992,11 +992,12 @@ updateSliderFill(els.pathRangeSlider);
 resetRoutine();
 syncHud();
 
-// Re-apply palette once the scene has finished loading the ball meshes.
+// Re-apply palette + eye layers once the scene has finished loading the ball meshes.
 const _scene = document.querySelector('a-scene');
+function _initOnSceneReady() { applyPalette(); applyEyeLayers(true); }
 if (_scene) {
-  if (_scene.hasLoaded) applyPalette();
-  else _scene.addEventListener('loaded', applyPalette);
+  if (_scene.hasLoaded) _initOnSceneReady();
+  else _scene.addEventListener('loaded', _initOnSceneReady);
 }
 </script>
 </body>
